@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lectura de Datos de Firestore</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .data-item { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Mis Datos de Firestore</h1>
+    <p>Estos son los datos leídos de tu colección "usuarios" en Cloud Firestore:</p>
+    <div id="data-container">
+        <p>Cargando datos...</p>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+    <script>
+        // ¡IMPORTANTE! Reemplaza esto con tu propia configuración de Firebase.
+        // Puedes encontrarla en la Consola de Firebase, en 'Configuración del proyecto' (el icono de engranaje)
+        // en la sección 'Tus apps'. Copia el objeto 'firebaseConfig'.
+        const firebaseConfig = {
+            apiKey: "AIzaSyDo30GmrPeIYn31jQNIaoWIC85Eew8gu_E",
+            authDomain: "carga-de-datos-e6203.firebaseapp.com",
+            projectId: "carga-de-datos-e6203",
+            storageBucket: "carga-de-datos-e6203.firebasestorage.app",
+            messagingSenderId: "138191639020",
+            appId: "1:138191639020:web:1962468915082ccff530c9",
+            measurementId: "G-G4NQ7XX45W"
+        };
+
+        // Inicializa Firebase
+        firebase.initializeApp(firebaseConfig);
+
+        // Obtén una referencia a Firestore
+        const db = firebase.firestore();
+
+        // Función para leer y mostrar los datos
+        async function readFirestoreData() {
+            const dataContainer = document.getElementById('data-container');
+            dataContainer.innerHTML = ''; // Limpia el contenido previo
+
+            try {
+                // Obtenemos una instantánea de la colección 'usuarios'
+                // Si aún no tienes una colección 'usuarios', puedes crearla manualmente en la Consola
+                // de Firestore, o agregar un documento en tu app para que se cree automáticamente.
+                const querySnapshot = await db.collection("usuarios").get();
+
+                if (querySnapshot.empty) {
+                    dataContainer.innerHTML = "<p>No hay documentos en la colección 'usuarios'. <br>Intenta agregar uno manualmente en la Consola de Firebase para verlo aquí.</p>";
+                    return;
+                }
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const docId = doc.id;
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'data-item';
+                    itemDiv.innerHTML = `
+                        <strong>ID del Documento:</strong> ${docId}<br>
+                        <strong>Datos:</strong> ${JSON.stringify(data, null, 2)}
+                    `;
+                    dataContainer.appendChild(itemDiv);
+                });
+            } catch (error) {
+                console.error("Error al leer datos de Firestore: ", error);
+                dataContainer.innerHTML = `<p class="error">Error al cargar los datos: ${error.message}</p>`;
+            }
+        }
+
+        // Llama a la función cuando la página se carga
+        window.onload = readFirestoreData;
+    </script>
+</body>
+</html>
