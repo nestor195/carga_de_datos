@@ -43,14 +43,14 @@
         </div>
     </div>
 
-    <!-- Firebase SDKs - Usamos las versiones "compat" para compatibilidad con navegadores antiguos y sencillez -->
+    <!-- Firebase SDKs - Usamos las versiones "compat" para compatibilidad y sencillez -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script> <!-- Nuevo: SDK de Firestore -->
 
     <script>
         // ¡IMPORTANTE! Reemplaza esto con tu propia configuración de Firebase.
         // La encontrarás en la Consola de Firebase -> Configuración del proyecto -> Tus apps.
-        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
         const firebaseConfig = {
             apiKey: "AIzaSyDo30GmrPeIYn31jQNIaoWIC85Eew8gu_E",
             authDomain: "carga-de-datos-e6203.firebaseapp.com",
@@ -64,6 +64,7 @@
         // Inicializa Firebase
         const app = firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
+        const db = firebase.firestore(); // Inicializa Cloud Firestore
         const provider = new firebase.auth.GoogleAuthProvider();
 
         // Elementos del DOM
@@ -77,9 +78,7 @@
             try {
                 // signInWithPopup abre una ventana emergente para la autenticación
                 const result = await auth.signInWithPopup(provider);
-                // El objeto 'user' contiene la información del usuario autenticado
-                const user = result.user;
-                console.log("Usuario autenticado:", user);
+                console.log("Usuario autenticado:", result.user);
                 // El estado de autenticación será manejado por onAuthStateChanged
             } catch (error) {
                 console.error("Error al iniciar sesión con Google:", error);
@@ -101,12 +100,13 @@
         }
 
         // Listener para cambios en el estado de autenticación
-        auth.onAuthStateChanged((user) => {
+        auth.onAuthStateChanged(async (user) => { // Hacemos la función asíncrona para usar await
             if (user) {
                 // Usuario ha iniciado sesión
                 statusElement.innerText = `¡Bienvenido, ${user.displayName || user.email}!`;
                 signInButton.classList.add('hidden');
                 signOutButton.classList.remove('hidden');
+
                 userInfoElement.innerHTML = `
                     <p><strong>Email:</strong> ${user.email}</p>
                     <p><strong>Nombre:</strong> ${user.displayName || 'N/A'}</p>
@@ -114,6 +114,38 @@
                     <p><strong>Proveedor:</strong> ${user.providerData[0].providerId}</p>
                     ${user.photoURL ? `<p><img src="${user.photoURL}" alt="Foto de perfil" style="width:50px; border-radius: 50%;"></p>` : ''}
                 `;
+
+                // --- NUEVA LÓGICA: Gestionar el usuario en Firestore ---
+                try {
+                    const userDocRef = db.collection("usuarios").doc(user.uid);
+                    const doc = await userDocRef.get();
+
+                    if (!doc.exists) {
+                        // El usuario no existe en Firestore, lo creamos
+                        await userDocRef.set({
+                            uid: user.uid,
+                            email: user.email,
+                            displayName: user.displayName,
+                            photoURL: user.photoURL,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(), // Marca de tiempo del servidor
+                            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        console.log("Nuevo usuario creado en Firestore:", user.uid);
+                        statusElement.innerText += " (¡Nuevo usuario registrado en Firestore!)";
+                    } else {
+                        // El usuario ya existe, simplemente actualizamos la fecha de último inicio de sesión
+                        await userDocRef.update({
+                            lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        console.log("Usuario existente en Firestore actualizado:", user.uid);
+                        statusElement.innerText += " (Último inicio de sesión actualizado en Firestore.)";
+                    }
+                } catch (firestoreError) {
+                    console.error("Error al gestionar el usuario en Firestore:", firestoreError);
+                    statusElement.innerText += ` (Error en Firestore: ${firestoreError.message})`;
+                }
+                // --- FIN NUEVA LÓGICA ---
+
             } else {
                 // No hay usuario conectado
                 statusElement.innerText = "Por favor, inicia sesión.";
