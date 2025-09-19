@@ -50,7 +50,7 @@
                 // Obtenemos una instantánea de la colección 'usuario'
                 // Si aún no tienes una colección 'usuario', puedes crearla manualmente en la Consola
                 // de Firestore, o agregar un documento en tu app para que se cree automáticamente.
-                const querySnapshot = await db.collection("usuarios").get();
+                const querySnapshot = await db.collection("usuario").get();
 
                 if (querySnapshot.empty) {
                     dataContainer.innerHTML = "<p>No hay documentos en la colección 'usuario'. <br>Intenta agregar uno manualmente en la Consola de Firebase para verlo aquí.</p>";
