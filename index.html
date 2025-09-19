@@ -12,7 +12,7 @@
 </head>
 <body>
     <h1>Mis Datos de Firestore</h1>
-    <p>Estos son los datos leídos de tu colección "usuarios" en Cloud Firestore:</p>
+    <p>Estos son los datos leídos de tu colección "usuario" en Cloud Firestore:</p>
     <div id="data-container">
         <p>Cargando datos...</p>
     </div>
@@ -47,13 +47,13 @@
             dataContainer.innerHTML = ''; // Limpia el contenido previo
 
             try {
-                // Obtenemos una instantánea de la colección 'usuarios'
-                // Si aún no tienes una colección 'usuarios', puedes crearla manualmente en la Consola
+                // Obtenemos una instantánea de la colección 'usuario'
+                // Si aún no tienes una colección 'usuario', puedes crearla manualmente en la Consola
                 // de Firestore, o agregar un documento en tu app para que se cree automáticamente.
                 const querySnapshot = await db.collection("usuarios").get();
 
                 if (querySnapshot.empty) {
-                    dataContainer.innerHTML = "<p>No hay documentos en la colección 'usuarios'. <br>Intenta agregar uno manualmente en la Consola de Firebase para verlo aquí.</p>";
+                    dataContainer.innerHTML = "<p>No hay documentos en la colección 'usuario'. <br>Intenta agregar uno manualmente en la Consola de Firebase para verlo aquí.</p>";
                     return;
                 }
 
