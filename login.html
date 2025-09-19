@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión con Google (Firebase)</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; text-align: center; }
+        .container { max-width: 400px; margin: 50px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        button {
+            background-color: #4285F4; /* Color de Google */
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        button:hover { background-color: #357ae8; }
+        #google-icon { width: 18px; height: 18px; }
+        #status { margin-top: 20px; font-weight: bold; }
+        #user-info { margin-top: 20px; text-align: left; background-color: #f9f9f9; padding: 15px; border-radius: 5px; border: 1px solid #eee; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Autenticación con Firebase</h1>
+        <p id="status">Por favor, inicia sesión.</p>
+
+        <button id="sign-in-button">
+            <img id="google-icon" src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_Google__G__Lettre.png" alt="Google icon">
+            Iniciar Sesión con Google
+        </button>
+        <button id="sign-out-button" class="hidden">Cerrar Sesión</button>
+
+        <div id="user-info">
+            <!-- La información del usuario aparecerá aquí -->
+        </div>
+    </div>
+
+    <!-- Firebase SDKs - Usamos las versiones "compat" para compatibilidad con navegadores antiguos y sencillez -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
+    <script>
+        // ¡IMPORTANTE! Reemplaza esto con tu propia configuración de Firebase.
+        // La encontrarás en la Consola de Firebase -> Configuración del proyecto -> Tus apps.
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        const firebaseConfig = {
+            apiKey: "AIzaSyDo30GmrPeIYn31jQNIaoWIC85Eew8gu_E",
+            authDomain: "carga-de-datos-e6203.firebaseapp.com",
+            projectId: "carga-de-datos-e6203",
+            storageBucket: "carga-de-datos-e6203.firebasestorage.app",
+            messagingSenderId: "138191639020",
+            appId: "1:138191639020:web:1962468915082ccff530c9",
+            measurementId: "G-G4NQ7XX45W"
+        };
+
+        // Inicializa Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const provider = new firebase.auth.GoogleAuthProvider();
+
+        // Elementos del DOM
+        const signInButton = document.getElementById('sign-in-button');
+        const signOutButton = document.getElementById('sign-out-button');
+        const statusElement = document.getElementById('status');
+        const userInfoElement = document.getElementById('user-info');
+
+        // Función para iniciar sesión con Google
+        async function signInWithGoogle() {
+            try {
+                // signInWithPopup abre una ventana emergente para la autenticación
+                const result = await auth.signInWithPopup(provider);
+                // El objeto 'user' contiene la información del usuario autenticado
+                const user = result.user;
+                console.log("Usuario autenticado:", user);
+                // El estado de autenticación será manejado por onAuthStateChanged
+            } catch (error) {
+                console.error("Error al iniciar sesión con Google:", error);
+                statusElement.innerText = `Error al iniciar sesión: ${error.message}`;
+                // Manejar errores como el cierre de la ventana emergente por el usuario
+            }
+        }
+
+        // Función para cerrar sesión
+        async function signOutUser() {
+            try {
+                await auth.signOut();
+                console.log("Sesión cerrada.");
+                // El estado de autenticación será manejado por onAuthStateChanged
+            } catch (error) {
+                console.error("Error al cerrar sesión:", error);
+                statusElement.innerText = `Error al cerrar sesión: ${error.message}`;
+            }
+        }
+
+        // Listener para cambios en el estado de autenticación
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // Usuario ha iniciado sesión
+                statusElement.innerText = `¡Bienvenido, ${user.displayName || user.email}!`;
+                signInButton.classList.add('hidden');
+                signOutButton.classList.remove('hidden');
+                userInfoElement.innerHTML = `
+                    <p><strong>Email:</strong> ${user.email}</p>
+                    <p><strong>Nombre:</strong> ${user.displayName || 'N/A'}</p>
+                    <p><strong>ID de Usuario (UID):</strong> ${user.uid}</p>
+                    <p><strong>Proveedor:</strong> ${user.providerData[0].providerId}</p>
+                    ${user.photoURL ? `<p><img src="${user.photoURL}" alt="Foto de perfil" style="width:50px; border-radius: 50%;"></p>` : ''}
+                `;
+            } else {
+                // No hay usuario conectado
+                statusElement.innerText = "Por favor, inicia sesión.";
+                signInButton.classList.remove('hidden');
+                signOutButton.classList.add('hidden');
+                userInfoElement.innerHTML = '';
+            }
+        });
+
+        // Asigna los eventos a los botones
+        signInButton.addEventListener('click', signInWithGoogle);
+        signOutButton.addEventListener('click', signOutUser);
+    </script>
+</body>
+</html>
