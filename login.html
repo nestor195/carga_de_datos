@@ -42,6 +42,12 @@
             <!-- La información del usuario aparecerá aquí -->
         </div>
     </div>
+    <div class="container_data">
+        <button id="read-data">Mis Datos</button>
+        <div id="data-container">
+            <p>Cargando datos...</p>
+        </div>
+    </div>
 
     <!-- Firebase SDKs - Usamos las versiones "compat" para compatibilidad y sencillez -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -67,18 +73,34 @@
         const db = firebase.firestore(); // Inicializa Cloud Firestore
         const provider = new firebase.auth.GoogleAuthProvider();
 
+        const medicionTipo = [];
+        const actualiza_medicion_tipo = async ()=>{
+            const tipos = await db.collection("medicion_tipo").get();
+            console.log(tipos);
+            tipos.forEach((doc)=>{
+                medicionTipo.push(doc.data());
+            });
+            console.log(medicionTipo);
+            
+        }
+
+        window.onload = async function() {
+            actualiza_medicion_tipo();
+        };
+
         // Elementos del DOM
         const signInButton = document.getElementById('sign-in-button');
         const signOutButton = document.getElementById('sign-out-button');
         const statusElement = document.getElementById('status');
         const userInfoElement = document.getElementById('user-info');
-
+        const readDataButton = document.getElementById('read-data');
+        const dataContainer = document.getElementById('data-container');
         // Función para iniciar sesión con Google
-        async function signInWithGoogle() {
+        const signInWithGoogle = async ()=>{
             try {
                 // signInWithPopup abre una ventana emergente para la autenticación
                 const result = await auth.signInWithPopup(provider);
-                console.log("Usuario autenticado:", result.user);
+                // console.log("Usuario autenticado:", result.user);
                 // El estado de autenticación será manejado por onAuthStateChanged
             } catch (error) {
                 console.error("Error al iniciar sesión con Google:", error);
@@ -88,10 +110,10 @@
         }
 
         // Función para cerrar sesión
-        async function signOutUser() {
+        const signOutUser = async ()=>{
             try {
                 await auth.signOut();
-                console.log("Sesión cerrada.");
+                // console.log("Sesión cerrada.");
                 // El estado de autenticación será manejado por onAuthStateChanged
             } catch (error) {
                 console.error("Error al cerrar sesión:", error);
@@ -124,7 +146,7 @@
 
             // --- NUEVA LÓGICA: Gestionar el usuario en Firestore ---
             try {
-                const userDocRef = db.collection("usuarios").doc(user.uid);
+                const userDocRef = db.collection("usuario").doc(user.uid);
                 const doc = await userDocRef.get();
 
                 if (!doc.exists) {
@@ -137,14 +159,14 @@
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(), // Marca de tiempo del servidor
                         lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                    console.log("Nuevo usuario creado en Firestore:", user.uid);
+                    // console.log("Nuevo usuario creado en Firestore:", user.uid);
                     statusElement.innerText += " (¡Nuevo usuario registrado en Firestore!)";
                 } else {
                     // El usuario ya existe, simplemente actualizamos la fecha de último inicio de sesión
                     await userDocRef.update({
                         lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                     });
-                    console.log("Usuario existente en Firestore actualizado:", user.uid);
+                    // console.log("Usuario existente en Firestore actualizado:", user.uid);
                     statusElement.innerText += " (Último inicio de sesión actualizado en Firestore.)";
                 }
             } catch (firestoreError) {
@@ -153,10 +175,34 @@
             }
             // --- FIN NUEVA LÓGICA ---
         });
+        
+        const readFirestoreData = async ()=>{
+            // si está logeado lee la subcoleccion 'medicion'
+            if(auth.currentUser){
+                try {
+                    const querySnapshot = await db.collection("usuario/" + auth.currentUser.uid + "/medicion").get();
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        const docId = doc.id;
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'data-item';
+                        itemDiv.innerHTML = `
+                            <strong>ID del Documento:</strong> ${docId}<br>
+                            <strong>Datos:</strong> ${JSON.stringify(data, null, 2)}
+                        `;
+                        dataContainer.appendChild(itemDiv);
+                    });
+                } catch (error) {
+                    console.error("Error al leer datos de Firestore: ", error);
+                    dataContainer.innerHTML = `<p class="error">Error al cargar los datos: ${error.message}</p>`;
+                }
+            }
+        }
 
         // Asigna los eventos a los botones
         signInButton.addEventListener('click', signInWithGoogle);
         signOutButton.addEventListener('click', signOutUser);
+        readDataButton.addEventListener('click', readFirestoreData);
     </script>
 </body>
 </html>

@@ -5,12 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lectura de Datos de Firestore</title>
     <style>
-        body { font-family: sans-serif; margin: 20px; }
+        body { font-family: sans-serif; margin: 20px; margin:0; padding:0; }
         .data-item { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
         .error { color: red; }
+        .main-menu {
+            position: fixed;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-end;
+            top: 0;
+            right: 0;
+            background-color: #2196f3;
+            color: white;
+            padding: 8px;
+            font-weight: bold;
+            cursor: move;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            user-select: none;
+            width: 100%;
+        }
+        #user-info {
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            cursor:pointer;
+            &:hover {
+                background-color: #1976d2;
+            }
+        }
     </style>
+    <script src="./js/ndialogo/ndialogo.js"></script>
+    <link rel="stylesheet" href="./js/ndialogo/ndialogo.css">
 </head>
 <body>
+    <div class="main-menu">
+        <div id="user-info">
+            <img src="" alt="" style="width: 32px; height: 32px;">
+            <div>Usuario</div>
+        </div>
+    </div>
     <h1>Mis Datos de Firestore</h1>
     <a href="login.html">login</a>
     <p>Estos son los datos leídos de tu colección "usuario" en Cloud Firestore:</p>
@@ -23,9 +59,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
     <script>
-        // ¡IMPORTANTE! Reemplaza esto con tu propia configuración de Firebase.
-        // Puedes encontrarla en la Consola de Firebase, en 'Configuración del proyecto' (el icono de engranaje)
-        // en la sección 'Tus apps'. Copia el objeto 'firebaseConfig'.
+        const userInfoElement = document.getElementById('user-info');
+        const dlg_intermedio = new Ndialogo();
+        const dlg = new Ndialogo();
+        userInfoElement.addEventListener('click', () => {
+            dlg.open(`Espere...`,false);
+            
+        });
         const firebaseConfig = {
             apiKey: "AIzaSyDo30GmrPeIYn31jQNIaoWIC85Eew8gu_E",
             authDomain: "carga-de-datos-e6203.firebaseapp.com",
