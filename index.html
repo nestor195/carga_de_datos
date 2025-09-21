@@ -9,7 +9,7 @@
         .data-item { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
         .error { color: red; }
         .main-menu {
-            position: fixed;
+            position: relative;
             display: flex;
             flex-direction: row;
             align-items: center;
@@ -27,13 +27,16 @@
             user-select: none;
             width: 100%;
         }
-        #user-info {
+        #user_icon {
             display: flex;
             align-items: center;
             flex-direction: column;
             cursor:pointer;
             &:hover {
                 background-color: #1976d2;
+            }
+            & img{
+                border-radius: 50%;
             }
         }
     </style>
@@ -42,8 +45,8 @@
 </head>
 <body>
     <div class="main-menu">
-        <div id="user-info">
-            <img src="" alt="" style="width: 32px; height: 32px;">
+        <div id="user_icon">
+            <img src="./img/usuario.png" alt="Foto de perfil" style="width: 50px;">
             <div>Usuario</div>
         </div>
     </div>
@@ -54,17 +57,52 @@
         <p>Cargando datos...</p>
     </div>
 
+
+
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
     <script>
-        const userInfoElement = document.getElementById('user-info');
+        const user_icon = document.getElementById('user_icon');
+
         const dlg_intermedio = new Ndialogo();
         const dlg = new Ndialogo();
-        userInfoElement.addEventListener('click', () => {
-            dlg.open(`Espere...`,false);
+        user_icon.addEventListener('click', async () => {
             
+            if(auth.currentUser){
+                dlg.open(`Espere...`,false);
+                const doc = await db.collection("usuario").doc(auth.currentUser.uid).get();
+                dlg.close();
+                if (doc.exists) {
+                    const data =  doc.data();
+                    dlg_intermedio.open(`
+                        <div class="data-item">
+                            <img src="${data.photoURL}" alt="Foto de perfil" style="width:50px; height: 50px;border-radius: 50%;">
+                            <strong>Nombre:</strong> ${data.displayName}<br>
+                            <strong>email:</strong> ${data.email}<br>
+                            <button id="sign-out-button" class="hidden">Cerrar Sesión</button>
+                        </div>
+                    `, true);
+                    document.getElementById('sign-out-button').addEventListener('click', () => {
+                        auth.signOut();
+                        dlg_intermedio.close();
+                    });
+                } else {
+                    console.log("No such document!");
+                }
+            } else {
+                dlg_intermedio.open(`
+                    <div class="data-item">
+                        <button id="sign-in-button" class="hidden">Iniciar Sesión</button>
+                    </div>
+                `, true);
+
+                const signInButton = document.getElementById('sign-in-button');
+                    signInButton.addEventListener('click', signInWithGoogle);
+                
+            }
         });
         const firebaseConfig = {
             apiKey: "AIzaSyDo30GmrPeIYn31jQNIaoWIC85Eew8gu_E",
@@ -76,11 +114,30 @@
             measurementId: "G-G4NQ7XX45W"
         };
 
+        const signInWithGoogle = async ()=>{
+                    
+            try {
+                // signInWithPopup abre una ventana emergente para la autenticación
+                const result = await auth.signInWithPopup(provider);
+                // console.log("Usuario autenticado:", result.user);
+                dlg.close();
+                dlg_intermedio.close();
+                // El estado de autenticación será manejado por onAuthStateChanged
+
+            } catch (error) {
+                console.error("Error al iniciar sesión con Google:", error);
+                statusElement.innerText = `Error al iniciar sesión: ${error.message}`;
+                // Manejar errores como el cierre de la ventana emergente por el usuario
+            }
+
+        }
+
         // Inicializa Firebase
         firebase.initializeApp(firebaseConfig);
-
-        // Obtén una referencia a Firestore
         const db = firebase.firestore();
+
+        const auth = firebase.auth();
+        const provider = new firebase.auth.GoogleAuthProvider();
 
         // Función para leer y mostrar los datos
         async function readFirestoreData() {
@@ -113,6 +170,82 @@
                 console.error("Error al leer datos de Firestore: ", error);
                 dataContainer.innerHTML = `<p class="error">Error al cargar los datos: ${error.message}</p>`;
             }
+        }
+
+        // Listener para cambios en el estado de autenticación
+        auth.onAuthStateChanged(async (user) => { // Hacemos la función asíncrona para usar await
+            console.log("Estado de autenticación cambiado:", user);
+            if (!user) {
+                // No hay usuario conectado
+                // dialogo_usuario.innerText = "Por favor, inicia sesión.";
+                // signInButton.classList.remove('hidden');
+                // signOutButton.classList.add('hidden');
+                // userInfoMenu.innerHTML = '';
+                user_icon.innerHTML = `
+                    <img src="./img/usuario.png" alt="Foto de perfil" style="width:50px;height:50px; border-radius: 50%;">
+                    <div>Usuario</div>
+                `;
+                
+                return;
+            }
+            // Usuario ha iniciado sesión
+
+            user_icon.innerHTML = `
+            <img src="${user.photoURL}" alt="Foto de perfil" style="width:50px; height:50px; border-radius: 50%;">
+            
+            <div>${user.displayName || user.email}</div>
+            `;
+
+
+            // signInButton.classList.add('hidden');
+            // signOutButton.classList.remove('hidden');
+
+            // userInfoElement.innerHTML = `
+            //     <p><strong>Email:</strong> ${user.email}</p>
+            //     <p><strong>Nombre:</strong> ${user.displayName || 'N/A'}</p>
+            //     <p><strong>ID de Usuario (UID):</strong> ${user.uid}</p>
+            //     <p><strong>Proveedor:</strong> ${user.providerData[0].providerId}</p>
+            //     ${user.photoURL ? `<p><img src="${user.photoURL}" alt="Foto de perfil" style="width:50px; border-radius: 50%;"></p>` : ''}
+            // `;
+
+            // --- NUEVA LÓGICA: Gestionar el usuario en Firestore ---
+            try {
+                const userDocRef = db.collection("usuario").doc(user.uid);
+                const doc = await userDocRef.get();
+
+                if (!doc.exists) {
+                    // El usuario no existe en Firestore, lo creamos
+                    await userDocRef.set({
+                        uid: user.uid,
+                        email: user.email,
+                        displayName: user.displayName,
+                        photoURL: user.photoURL,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(), // Marca de tiempo del servidor
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    console.log("Nuevo usuario creado en Firestore:", user.uid);
+                    // statusElement.innerText += " (¡Nuevo usuario registrado en Firestore!)";
+                } else {
+                    // El usuario ya existe, simplemente actualizamos la fecha de último inicio de sesión
+                    await userDocRef.update({
+                        lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    console.log("Usuario existente en Firestore actualizado:", user.uid);
+                    // statusElement.innerText += " (Último inicio de sesión actualizado en Firestore.)";
+                }
+            } catch (firestoreError) {
+                console.error("Error al gestionar el usuario en Firestore:", firestoreError);
+                statusElement.innerText += ` (Error en Firestore: ${firestoreError.message})`;
+            }
+            // --- FIN NUEVA LÓGICA ---
+        });
+        
+        const set_user_icon = (user) => {
+            console.log(user);
+            user_icon.innerHTML = `
+            <img src="${user.photoURL}" alt="Foto de perfil" style="width:32px; height:32px;">
+            <div>${user.displayName || user.email}</div>
+            `;
         }
 
         // Llama a la función cuando la página se carga
