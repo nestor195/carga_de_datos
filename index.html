@@ -95,12 +95,18 @@
             } else {
                 dlg_intermedio.open(`
                     <div class="data-item">
-                        <button id="sign-in-button" class="hidden">Iniciar Sesión</button>
+                        <button id="sign-in-button-google" class="hidden">Iniciar Sesión Google</button>
+                        <button id="sign-in-button-facebook" class="hidden">Iniciar Sesión Facebook</button>
                     </div>
                 `, true);
 
-                const signInButton = document.getElementById('sign-in-button');
-                    signInButton.addEventListener('click', signInWithGoogle);
+                const signInButtonGoogle = document.getElementById('sign-in-button-google');
+                signInButtonGoogle.addEventListener('click', ()=>{signIn('goolgle')});
+
+                const signInButtonFacebook = document.getElementById('sign-in-button-facebook');
+                signInButtonFacebook.addEventListener('click', ()=>{signIn('facebook')});
+
+
                 
             }
         });
@@ -114,11 +120,18 @@
             measurementId: "G-G4NQ7XX45W"
         };
 
-        const signInWithGoogle = async ()=>{
+        const signIn = async (proveedor)=>{
                     
             try {
                 // signInWithPopup abre una ventana emergente para la autenticación
-                const result = await auth.signInWithPopup(provider);
+                let result;
+                if(proveedor === 'goolgle'){
+                    result = await auth.signInWithPopup(providerGoogle);
+                }
+                if(proveedor === 'facebook'){
+                    result = await auth.signInWithPopup(providerFacebook);
+                }
+
                 // console.log("Usuario autenticado:", result.user);
                 dlg.close();
                 dlg_intermedio.close();
@@ -137,7 +150,8 @@
         const db = firebase.firestore();
 
         const auth = firebase.auth();
-        const provider = new firebase.auth.GoogleAuthProvider();
+        const providerGoogle = new firebase.auth.GoogleAuthProvider();
+        const providerFacebook = new firebase.auth.FacebookAuthProvider();
 
         // Función para leer y mostrar los datos
         async function readFirestoreData() {
