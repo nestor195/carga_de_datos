@@ -52,10 +52,9 @@
     </div>
     <h1>Mis Datos de Firestore</h1>
     <a href="login.html">login</a>
-    <p>Estos son los datos leídos de tu colección "usuario" en Cloud Firestore:</p>
-    <div id="data-container">
-        <p>Cargando datos...</p>
-    </div>
+    <button onclick="add_medicion_dlg();">Agregar Medicion</button>
+
+
 
 
 
@@ -105,9 +104,6 @@
 
                 const signInButtonFacebook = document.getElementById('sign-in-button-facebook');
                 signInButtonFacebook.addEventListener('click', ()=>{signIn('facebook')});
-
-
-                
             }
         });
         const firebaseConfig = {
@@ -127,6 +123,7 @@
                 let result;
                 if(proveedor === 'goolgle'){
                     result = await auth.signInWithPopup(providerGoogle);
+                    // resutl = await auth.signInWithRedirect(providerGoogle);
                 }
                 if(proveedor === 'facebook'){
                     result = await auth.signInWithPopup(providerFacebook);
@@ -145,6 +142,8 @@
 
         }
 
+
+
         // Inicializa Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -153,76 +152,86 @@
         const providerGoogle = new firebase.auth.GoogleAuthProvider();
         const providerFacebook = new firebase.auth.FacebookAuthProvider();
 
+
+        const medicion_tipo_array = [];
+
         // Función para leer y mostrar los datos
         async function readFirestoreData() {
-            const dataContainer = document.getElementById('data-container');
-            dataContainer.innerHTML = ''; // Limpia el contenido previo
-
             try {
-                // Obtenemos una instantánea de la colección 'usuario'
-                // Si aún no tienes una colección 'usuario', puedes crearla manualmente en la Consola
-                // de Firestore, o agregar un documento en tu app para que se cree automáticamente.
-                const querySnapshot = await db.collection("usuario").get();
-
-                if (querySnapshot.empty) {
-                    dataContainer.innerHTML = "<p>No hay documentos en la colección 'usuario'. <br>Intenta agregar uno manualmente en la Consola de Firebase para verlo aquí.</p>";
+                const medicion_tipo_colection = await db.collection("medicion_tipo").get();
+                
+                if (medicion_tipo_colection.empty) {
+                    console.log('No hay documentos en la colección "medicion_tipo"');
                     return;
                 }
 
-                querySnapshot.forEach((doc) => {
+                medicion_tipo_colection.forEach((doc) => {
                     const data = doc.data();
                     const docId = doc.id;
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'data-item';
-                    itemDiv.innerHTML = `
-                        <strong>ID del Documento:</strong> ${docId}<br>
-                        <strong>Datos:</strong> ${JSON.stringify(data, null, 2)}
-                    `;
-                    dataContainer.appendChild(itemDiv);
+                    medicion_tipo_array.push(data);
                 });
+                console.log('medicion_tipo',medicion_tipo_array);
             } catch (error) {
                 console.error("Error al leer datos de Firestore: ", error);
-                dataContainer.innerHTML = `<p class="error">Error al cargar los datos: ${error.message}</p>`;
             }
         }
 
-        // Listener para cambios en el estado de autenticación
-        auth.onAuthStateChanged(async (user) => { // Hacemos la función asíncrona para usar await
-            console.log("Estado de autenticación cambiado:", user);
-            if (!user) {
-                // No hay usuario conectado
-                // dialogo_usuario.innerText = "Por favor, inicia sesión.";
-                // signInButton.classList.remove('hidden');
-                // signOutButton.classList.add('hidden');
-                // userInfoMenu.innerHTML = '';
+        async function read_medicion_tipo() {
+            try {
+                const medicion_tipo_colection = await db.collection("medicion_tipo").get();
+                
+                if (medicion_tipo_colection.empty) {
+                    // console.log('No hay documentos en la colección "medicion_tipo"');
+                    return {
+                        ok: false,
+                        error_msg: 'No hay documentos en la colección "medicion_tipo"',
+                        error_code: 404,
+                    };
+                }
+                const result = [];
+                medicion_tipo_colection.forEach((doc) => {
+                    const data = doc.data();
+                    const docId = doc.id;
+                    result.push({
+                        id: docId,
+                        data: data,
+                    });
+                });
+                return {
+                    ok: true,
+                    data: {
+                        medicion_tipo: result,
+                    },
+                };
+            } catch (error) {
+                // console.error("Error al leer datos de Firestore: ", error);
+                return {
+                    ok: false,
+                    error_msg: error.message,
+                    error_code: error.code,
+                };
+            }
+        }
+
+
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) { // Si no hay usuario conectado
                 user_icon.innerHTML = `
                     <img src="./img/usuario.png" alt="Foto de perfil" style="width:50px;height:50px; border-radius: 50%;">
                     <div>Usuario</div>
                 `;
-                
+                console.log('usuario deslogeado');  
                 return;
             }
-            // Usuario ha iniciado sesión
 
             user_icon.innerHTML = `
             <img src="${user.photoURL}" alt="Foto de perfil" style="width:50px; height:50px; border-radius: 50%;">
             
             <div>${user.displayName || user.email}</div>
             `;
+            console.log('usuario logeado');
 
-
-            // signInButton.classList.add('hidden');
-            // signOutButton.classList.remove('hidden');
-
-            // userInfoElement.innerHTML = `
-            //     <p><strong>Email:</strong> ${user.email}</p>
-            //     <p><strong>Nombre:</strong> ${user.displayName || 'N/A'}</p>
-            //     <p><strong>ID de Usuario (UID):</strong> ${user.uid}</p>
-            //     <p><strong>Proveedor:</strong> ${user.providerData[0].providerId}</p>
-            //     ${user.photoURL ? `<p><img src="${user.photoURL}" alt="Foto de perfil" style="width:50px; border-radius: 50%;"></p>` : ''}
-            // `;
-
-            // --- NUEVA LÓGICA: Gestionar el usuario en Firestore ---
+            // Actualiza usuario en Firestore
             try {
                 const userDocRef = db.collection("usuario").doc(user.uid);
                 const doc = await userDocRef.get();
@@ -238,7 +247,7 @@
                         lastLogin: firebase.firestore.FieldValue.serverTimestamp()
                     });
                     console.log("Nuevo usuario creado en Firestore:", user.uid);
-                    // statusElement.innerText += " (¡Nuevo usuario registrado en Firestore!)";
+
                 } else {
                     // El usuario ya existe, simplemente actualizamos la fecha de último inicio de sesión
                     await userDocRef.update({
@@ -248,22 +257,102 @@
                     // statusElement.innerText += " (Último inicio de sesión actualizado en Firestore.)";
                 }
             } catch (firestoreError) {
-                console.error("Error al gestionar el usuario en Firestore:", firestoreError);
+                console.log("Error al gestionar el usuario en Firestore:", firestoreError);
                 statusElement.innerText += ` (Error en Firestore: ${firestoreError.message})`;
             }
-            // --- FIN NUEVA LÓGICA ---
+
+            // Lee los datos de del usuario
+            readFirestoreUserData();
         });
-        
-        const set_user_icon = (user) => {
-            console.log(user);
-            user_icon.innerHTML = `
-            <img src="${user.photoURL}" alt="Foto de perfil" style="width:32px; height:32px;">
-            <div>${user.displayName || user.email}</div>
-            `;
-        }
 
         // Llama a la función cuando la página se carga
-        window.onload = readFirestoreData;
+        window.onload = ()=>{
+            readFirestoreData();
+        };
+
+        const readFirestoreUserData = async()=>{
+            // si está logeado lee la subcoleccion 'medicion'
+            if(auth.currentUser){
+                try {
+                    const querySnapshot = await db.collection("usuario/" + auth.currentUser.uid + "/medicion").get();
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        const docId = doc.id;
+                        console.log('docId',docId);
+                        console.log('data',data);
+                        
+                    });
+                } catch (error) {
+                    console.error("Error al leer datos de Firestore: ", error);
+                    dataContainer.innerHTML = `<p class="error">Error al cargar los datos: ${error.message}</p>`;
+                }
+            }
+        }
+
+        const add_medicion_dlg = async()=>{
+            if(!auth.currentUser){
+                return;
+            }
+
+            dlg.open(`Espere...`,false);
+            const a = await read_medicion_tipo();
+            dlg.close();
+            if(!a.ok){
+                dlg.open('<div>'+ a.error_msg+ a.error_code+'</div>',false);
+                return;
+            }
+            dlg_intermedio.setTitle('Agregar Medicion');
+            dlg_intermedio.open(`<div style="display: flex; flex-direction: column; gap: 10px;">
+                <label for="medicion_tipo">Tipo de Medicion:</label>
+                <select id="medicion_tipo" name="medicion_tipo" onchange="console.log(this);">
+                    ${a.data.medicion_tipo.map((medicion_tipo) => `<option value="${medicion_tipo.id}">${medicion_tipo.data.nombre}</option>`).join('')}
+                </select>
+                <label for="medicion_fecha">Fecha:</label>
+                <input type="date" id="medicion_fecha" name="medicion_fecha" value="${new Date().toISOString().split('T')[0]}">
+                <label for="medicion_hora">Hora:</label>
+                <input type="time" id="medicion_hora" name="medicion_hora" value="${new Date().toLocaleTimeString()}">
+                <label for="medicion_valor">Valor:</label>
+                <input type="number" step="0.01" id="medicion_valor" name="medicion_valor">
+                <label for="medicion_contexto">Contexto:</label>
+                <input type="text" id="medicion_contexto" name="medicion_contexto">
+                <div>
+                    <button id="add_medicion_btn">Agregar Medicion</button>
+                    <button onclick="dlg_intermedio.close();">Cancelar</button>
+                </div>
+
+                </div>
+            `);
+            const add_medicion_btn = document.getElementById('add_medicion_btn');
+            add_medicion_btn.addEventListener('click', async () => {
+                const medicion_tipo = document.getElementById('medicion_tipo').value;
+                const medicion_fecha = document.getElementById('medicion_fecha').value;
+                const medicion_hora = document.getElementById('medicion_hora').value;
+                const medicion_valor = document.getElementById('medicion_valor').value;
+                const medicion_contexto = document.getElementById('medicion_contexto').value;
+                const data = {medicion_tipo, medicion_fecha, medicion_hora, medicion_valor, medicion_contexto};
+
+                dlg.open('Espere...', false);
+                const result = await add_medicion(data);
+                dlg.close();
+                if (!result.ok){
+                    dlg.open(`<div>${result.error_msg} ${result.error_code}</div>`, true);
+                    return;
+                }
+                dlg_intermedio.close();
+            });
+
+            const add_medicion = async (data) => {
+                console.log(data);
+                try {
+                    const docRef = db.collection("usuario/" + auth.currentUser.uid + "/medicion").doc();
+                    await docRef.set(data);
+                    return {ok: true};
+                } catch (error) {
+                    return {ok: false, error_msg: error.message, error_code: error.code};
+                }
+            }
+        }
+            
     </script>
 </body>
 </html>
