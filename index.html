@@ -16,9 +16,8 @@
             justify-content: flex-end;
             top: 0;
             right: 0;
-            background-color: #2196f3;
+            background-color: #1976d2;
             color: white;
-            padding: 8px;
             font-weight: bold;
             cursor: move;
             white-space: nowrap;
@@ -39,6 +38,29 @@
                 border-radius: 50%;
             }
         }
+        #data_mediciones{
+            display: flex;
+            flex-direction: column;
+            align-items: baseline;
+            padding: 10px;
+            & .item_title{
+                font-weight: bold;
+                width: 100%;
+                background-color: #1976d2;
+                color: white;
+            }
+            & .data_item{
+                width: auto;
+                padding: 10px;
+                border: 1px solid #1976d2;
+                border-radius: 5px;
+                margin-bottom: 10px;
+            }
+            & .data_mediciones_day{
+                width:100%;
+            }
+        }
+
     </style>
     <script src="./js/ndialogo/ndialogo.js"></script>
     <link rel="stylesheet" href="./js/ndialogo/ndialogo.css">
@@ -53,6 +75,14 @@
     <h1>Mis Datos de Firestore</h1>
     <a href="login.html">login</a>
     <button onclick="add_medicion_dlg();">Agregar Medicion</button>
+    <div id="data_contenedor">
+        <div id="data_grafico">
+
+        </div>
+        <div id="data_mediciones">
+
+        </div>
+    </div>
 
 
 
@@ -153,7 +183,7 @@
         const providerFacebook = new firebase.auth.FacebookAuthProvider();
 
 
-        const medicion_tipo_array = [];
+        const medicion_tipo_data = {};
 
         // Función para leer y mostrar los datos
         async function readFirestoreData() {
@@ -168,9 +198,9 @@
                 medicion_tipo_colection.forEach((doc) => {
                     const data = doc.data();
                     const docId = doc.id;
-                    medicion_tipo_array.push(data);
+                    medicion_tipo_data[docId] = data;
                 });
-                console.log('medicion_tipo',medicion_tipo_array);
+                console.log('medicion_tipo',medicion_tipo_data);
             } catch (error) {
                 console.error("Error al leer datos de Firestore: ", error);
             }
@@ -274,14 +304,49 @@
             // si está logeado lee la subcoleccion 'medicion'
             if(auth.currentUser){
                 try {
-                    const querySnapshot = await db.collection("usuario/" + auth.currentUser.uid + "/medicion").get();
+                    const querySnapshot = await db.collection("usuario/" + auth.currentUser.uid + "/medicion")
+                    .orderBy('fechayhora','desc')
+                    .get();
+                    
+                    const mediciones = [];
+                    const data_mediciones = document.getElementById('data_mediciones');
+                    data_mediciones.innerHTML = '';
                     querySnapshot.forEach((doc) => {
                         const data = doc.data();
                         const docId = doc.id;
-                        console.log('docId',docId);
-                        console.log('data',data);
+                        const tipo = data.tipo;
+                        const fecha = data.fechayhora.toDate().toISOString('en-US').slice(0, 10);
+                        const hora = data.fechayhora.toDate().toLocaleTimeString('en-US', { hour12: false });
+                        mediciones.push(data);
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'data_item';
+                        itemDiv.innerHTML = `
+                            <strong>ID del Documento:</strong> ${docId}<br>
+                            <strong>fecha y hora:</strong> ${fecha+' '+hora}<br>
+                            <strong>fecha:</strong> ${fecha}<br>
+                            <strong>hora:</strong> ${hora}<br>
+                            <strong>tipo:</strong> ${medicion_tipo_data[tipo]?medicion_tipo_data[tipo].nombre:''}<br>
+                            <strong>valor:</strong> ${data.medicion_valor} ${medicion_tipo_data[tipo]?medicion_tipo_data[tipo].unidad:''}<br>
+                            <strong>contexto:</strong> ${data.medicion_contexto}<br>
+
+                        `;
+                        let data_mediciones_day = data_mediciones.querySelector(`[data-day="${fecha}"]`);
+                        if (!data_mediciones_day) {
+                            data_mediciones_day = document.createElement('div');
+                            data_mediciones_day.className = 'data_mediciones_day';
+                            data_mediciones_day.setAttribute('data-day', fecha);
+                            data_mediciones_day.innerHTML = `<div class="item_title">${fecha}</div>`;
+                            data_mediciones.appendChild(data_mediciones_day);
+                        }   
+                        data_mediciones_day.appendChild(itemDiv);
                         
                     });
+                    console.log('mediciones',mediciones.map(medicion =>{
+                        // transforma fecha a string
+                        let fecha = medicion.fechayhora.toDate().toISOString().slice(0, 19).replace('T', ' ');
+                        return {...medicion, fechayhora:fecha};
+                        
+                    }));
                 } catch (error) {
                     console.error("Error al leer datos de Firestore: ", error);
                     dataContainer.innerHTML = `<p class="error">Error al cargar los datos: ${error.message}</p>`;
@@ -342,8 +407,12 @@
             });
 
             const add_medicion = async (data) => {
-                console.log(data);
+                // console.log(data);
                 try {
+                    data.fechayhora = firebase.firestore.Timestamp.fromDate(new Date(data.medicion_fecha + ' ' + data.medicion_hora));
+                    delete data.medicion_fecha;
+                    delete data.medicion_hora;
+
                     const docRef = db.collection("usuario/" + auth.currentUser.uid + "/medicion").doc();
                     await docRef.set(data);
                     return {ok: true};
