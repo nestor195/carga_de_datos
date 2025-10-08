@@ -83,6 +83,20 @@
 
         </div>
     </div>
+    
+    
+    <svg id="svg" viewBox="0 0 20 10">
+        <path id="svg_path" style="stroke:#744848;stroke-width:1;fill:none;"
+        d="M0 7c
+        3,0
+        7,-5
+        10,-5
+        
+        3,0
+        7,5
+        10,5
+        "/>
+    </svg>
 
 
 
@@ -94,6 +108,31 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
     <script>
+
+        const valores = [[3,100],[9,120],[18,85],[23,180]]; // hora, valor
+        const svgpath = document.getElementById('svg_path');
+        const svg = document.getElementById('svg');
+        viewbox = [0,0,24,200];
+        punto_inicial = valores[0];
+        
+        
+        string = `M${punto_inicial[0]*10} ${punto_inicial[1]}c`;
+        punto_anterior = punto_inicial;
+        for (let i = 1; i < valores.length; i++) {   
+            const x = (valores[i][0] - punto_anterior[0]);
+            const y = (valores[i][1] - punto_anterior[1]);
+            string += ` 0,0 ${x*10},${y} ${x*10},${y}`;
+            punto_anterior = valores[i];
+        }
+        console.log(string);
+        svg.setAttribute('viewBox',`${viewbox[0]} ${viewbox[1]} ${viewbox[2]} ${viewbox[3]}`);
+        svg.style.width = `${(viewbox[2] - viewbox[0])*10}px`;
+        svg.style.height = `${viewbox[3] - viewbox[1]}px`;
+
+        svgpath.setAttribute('d',string);
+
+
+
         const user_icon = document.getElementById('user_icon');
 
         const dlg_intermedio = new Ndialogo();
@@ -311,12 +350,14 @@
                     const mediciones = [];
                     const data_mediciones = document.getElementById('data_mediciones');
                     data_mediciones.innerHTML = '';
+                    // console.log(medicion_tipo_data);
                     querySnapshot.forEach((doc) => {
                         const data = doc.data();
                         const docId = doc.id;
-                        const tipo = data.tipo;
+                        const tipo = data.medicion_tipo;
                         const fecha = data.fechayhora.toDate().toISOString('en-US').slice(0, 10);
                         const hora = data.fechayhora.toDate().toLocaleTimeString('en-US', { hour12: false });
+                        console.log('tipo:',tipo);
                         mediciones.push(data);
                         const itemDiv = document.createElement('div');
                         itemDiv.className = 'data_item';
